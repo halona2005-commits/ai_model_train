@@ -1,58 +1,35 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyd
-
-# Virtual environment
+*.so
+.Python
 venv/
+env/
 .venv/
 
-# Generated runtime outputs
-pipeline_results/
-face_crops/
-nose_v3_batch/
-nose_fallback_results/
-features_enhanced/
+# Jupyter
+.ipynb_checkpoints/
 
-# Generated test data
-random_dog/
-
-# Model training runs / generated YOLO outputs
-runs/
-wandb/
-*.log
-
-# Large datasets
-dataset/DogFLW/
-dataset/pet_biometric_clean/
-dataset/pet_biometric_enhanced/
-dataset/nose_validation/
-dataset/face_detection_yolo/
-dataset/nose_detection_yolo_tight/
-
-
-# Runtime feature files
-features/runtime/
-
-# IDE / OS
-.vscode/
-.idea/
+# OS
 .DS_Store
 Thumbs.db
 
-# Large/base YOLO weight
-yolo11n.pt
+# IDE
+.vscode/
+.idea/
 
-# Generated feature databases
-features/*.npy
+# Large artifacts — NOT for git
+models/
+dataset/
+pet_biometric_clean/
+DogFLW/
 
-# YOLO training artifacts
-models/**/args.yaml
-models/**/labels.jpg
-models/**/results.csv
-models/**/results.png
-models/**/train_batch*.jpg
-models/**/val_batch*.jpg
-models/**/confusion_matrix*.png
-models/**/Box*.png
-models/EDSR_x4.pb
+# Model artifacts (extra safety)
+*.keras
+*.pt
+*.h5
+*.npy
+
+# Logs / temp
+*.log
+*.tmp
