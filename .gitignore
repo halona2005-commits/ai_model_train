@@ -23,6 +23,8 @@ models/
 dataset/
 pet_biometric_clean/
 DogFLW/
+pet_biometric_full/
+dataset_corrected/
 
 # Model artifacts (extra safety)
 *.keras

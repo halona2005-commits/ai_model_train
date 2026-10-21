@@ -1,54 +1,83 @@
+"""
+Training augmentation for nose-print biometrics.
+
+Version-safe implementation:
+    - Uses explicit tf.expand_dims for batch dimension (Keras 3 requirement)
+    - Manual brightness/contrast (avoids version-specific layer behavior)
+    - ±15° rotation (real)
+    - No 90°/180° rotation
+    - No vertical/horizontal flip
+    - No hue shift
+
+Input: [H, W, 3] float32 in [0, 255]
+Output: [H, W, 3] float32 in [0, 255]
+"""
+
 import tensorflow as tf
+import math
 
 IMG_SIZE = (224, 224)
 
-# -----------------------------------------------------------
-# Training augmentation pipeline
-# -----------------------------------------------------------
-# Applied to a [H, W, 3] float32 tensor in range [0, 255].
-# Returns augmented tensor of the same shape.
-# -----------------------------------------------------------
+
+# -----------------------------------------------------------------
+# Cached Keras preprocessing layers
+# Each is applied to a batched tensor: (B, H, W, C)
+# -----------------------------------------------------------------
+_rotate = tf.keras.layers.RandomRotation(
+    factor=15.0 / 360.0,      # ±15°
+    fill_mode="reflect",
+)
+_translate = tf.keras.layers.RandomTranslation(
+    height_factor=0.05,
+    width_factor=0.05,
+    fill_mode="reflect",
+)
+_zoom = tf.keras.layers.RandomZoom(
+    height_factor=0.10,
+    width_factor=0.10,
+    fill_mode="reflect",
+)
+
 
 def augment_train(img):
+    """
+    Apply training augmentation to a single nose image.
+
+    img: [H, W, 3] float32 in [0, 255]
+    returns: [H, W, 3] float32 in [0, 255]
+    """
     img = tf.cast(img, tf.float32)
 
-    # Random rotation (±15°)
-    img = tf.image.rot90(img, k=tf.random.uniform([], 0, 4, dtype=tf.int32)) if False else img
-    # (rot90 disabled - we use RandomRotation via Keras preprocessing instead)
+    # add batch dim -> (1, H, W, 3), Keras 3 requires this
+    x = tf.expand_dims(img, axis=0)
 
-    # Brightness
-    img = tf.image.random_brightness(img, max_delta=0.20 * 255.0)
+    # rotation ±15°
+    x = _rotate(x, training=True)
 
-    # Contrast
-    img = tf.image.random_contrast(img, lower=0.85, upper=1.15)
+    # translation ±5%
+    x = _translate(x, training=True)
 
-    # Small saturation tweak (very mild, mostly preserved)
-    img = tf.image.random_saturation(img, lower=0.9, upper=1.1)
+    # zoom ±10%
+    x = _zoom(x, training=True)
 
-    # Random crop-zoom-translate via affine-ish
-    # We use a small crop + resize to simulate zoom + translation
-    h, w = tf.shape(img)[0], tf.shape(img)[1]
-    scale = tf.random.uniform([], 0.90, 1.0)
-    crop_h = tf.cast(tf.cast(h, tf.float32) * scale, tf.int32)
-    crop_w = tf.cast(tf.cast(w, tf.float32) * scale, tf.int32)
-    # random offset
-    off_h = tf.random.uniform([], 0, h - crop_h + 1, dtype=tf.int32)
-    off_w = tf.random.uniform([], 0, w - crop_w + 1, dtype=tf.int32)
-    img = tf.image.crop_to_bounding_box(img, off_h, off_w, crop_h, crop_w)
-    img = tf.image.resize(img, IMG_SIZE)
+    # remove batch dim
+    x = x[0]
 
-    # Occasional mild blur
-    if tf.random.uniform([]) < 0.15:
-        img = tf.image.resize(
-            tf.image.resize(img, (IMG_SIZE[0] // 2, IMG_SIZE[1] // 2)),
-            IMG_SIZE
-        )
+    # brightness ±20%  (manual, range-safe on [0, 255])
+    delta = tf.random.uniform([], -0.20, 0.20) * 255.0
+    x = x + delta
 
-    # Clip to valid range
-    img = tf.clip_by_value(img, 0.0, 255.0)
-    return img
+    # contrast ±15%  (manual, mean-centered multiply)
+    mean = tf.reduce_mean(x, axis=[0, 1], keepdims=True)
+    factor = tf.random.uniform([], 0.85, 1.15)
+    x = (x - mean) * factor + mean
+
+    # clamp to valid range
+    x = tf.clip_by_value(x, 0.0, 255.0)
+
+    return x
 
 
 def augment_eval(img):
-    """No augmentation for validation / test."""
+    """Validation / test: no augmentation, just type-safe cast."""
     return tf.cast(img, tf.float32)
