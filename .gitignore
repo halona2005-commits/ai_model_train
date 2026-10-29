@@ -18,19 +18,12 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Large artifacts — NOT for git
-models/
+# Huge datasets — Keep these OUT of Git (Too large)
 dataset/
 pet_biometric_clean/
 DogFLW/
 pet_biometric_full/
 dataset_corrected/
-
-# Model artifacts (extra safety)
-*.keras
-*.pt
-*.h5
-*.npy
 
 # Logs / temp
 *.log

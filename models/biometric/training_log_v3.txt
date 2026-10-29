@@ -1,0 +1,84 @@
+============================================================
+PHASE 1: unfreeze last 20, LR=0.0001, batch=64
+============================================================
+  [P1] epoch 1  step 10/40  loss=0.4082  active=0.997
+  [P1] epoch 1  step 20/40  loss=0.3618  active=0.998
+  [P1] epoch 1  step 30/40  loss=0.3422  active=0.999
+  [P1] epoch 1  step 40/40  loss=0.3319  active=0.999
+Epoch 01  train_loss=0.3319  val_loss=0.3004  time=503.0s
+  new best val_loss=0.3004  saved
+  [P1] epoch 2  step 10/40  loss=0.3007  active=1.000
+  [P1] epoch 2  step 20/40  loss=0.3005  active=1.000
+  [P1] epoch 2  step 30/40  loss=0.3005  active=1.000
+  [P1] epoch 2  step 40/40  loss=0.3005  active=1.000
+Epoch 02  train_loss=0.3005  val_loss=0.3001  time=483.7s
+  new best val_loss=0.3001  saved
+  [P1] epoch 3  step 10/40  loss=0.3002  active=1.000
+  [P1] epoch 3  step 20/40  loss=0.3003  active=1.000
+  [P1] epoch 3  step 30/40  loss=0.3003  active=1.000
+  [P1] epoch 3  step 40/40  loss=0.3003  active=1.000
+Epoch 03  train_loss=0.3003  val_loss=0.3001  time=344.5s
+  new best val_loss=0.3001  saved
+  [P1] epoch 4  step 10/40  loss=0.3002  active=1.000
+  [P1] epoch 4  step 20/40  loss=0.3002  active=1.000
+  [P1] epoch 4  step 30/40  loss=0.3002  active=1.000
+  [P1] epoch 4  step 40/40  loss=0.3001  active=1.000
+Epoch 04  train_loss=0.3001  val_loss=0.3000  time=329.5s
+  new best val_loss=0.3000  saved
+  [P1] epoch 5  step 10/40  loss=0.3001  active=1.000
+  [P1] epoch 5  step 20/40  loss=0.3001  active=1.000
+  [P1] epoch 5  step 30/40  loss=0.3001  active=1.000
+  [P1] epoch 5  step 40/40  loss=0.3001  active=1.000
+Epoch 05  train_loss=0.3001  val_loss=0.3000  time=292.6s
+  new best val_loss=0.3000  saved
+  [P1] epoch 6  step 10/40  loss=0.3001  active=1.000
+  [P1] epoch 6  step 20/40  loss=0.3001  active=1.000
+  [P1] epoch 6  step 30/40  loss=0.3001  active=1.000
+  [P1] epoch 6  step 40/40  loss=0.3000  active=1.000
+Epoch 06  train_loss=0.3000  val_loss=0.3000  time=701.1s
+  [P1] epoch 7  step 10/40  loss=0.3000  active=1.000
+  [P1] epoch 7  step 20/40  loss=0.3000  active=1.000
+  [P1] epoch 7  step 30/40  loss=0.3000  active=1.000
+  [P1] epoch 7  step 40/40  loss=0.3000  active=1.000
+Epoch 07  train_loss=0.3000  val_loss=0.3000  time=277.7s
+  new best val_loss=0.3000  saved
+  [P1] epoch 8  step 10/40  loss=0.2999  active=1.000
+  [P1] epoch 8  step 20/40  loss=0.2999  active=1.000
+  [P1] epoch 8  step 30/40  loss=0.2999  active=1.000
+  [P1] epoch 8  step 40/40  loss=0.2999  active=1.000
+Epoch 08  train_loss=0.2999  val_loss=0.3000  time=284.5s
+
+============================================================
+PHASE 2: unfreeze last 60, LR=1e-05
+============================================================
+  [P2] epoch 1  step 10/40  loss=0.2999  active=1.000
+  [P2] epoch 1  step 20/40  loss=0.2999  active=1.000
+  [P2] epoch 1  step 30/40  loss=0.2999  active=1.000
+  [P2] epoch 1  step 40/40  loss=0.2999  active=1.000
+Epoch 01  train_loss=0.2999  val_loss=0.3000  time=287.8s
+  [P2] epoch 2  step 10/40  loss=0.2998  active=1.000
+  [P2] epoch 2  step 20/40  loss=0.2997  active=1.000
+  [P2] epoch 2  step 30/40  loss=0.2997  active=1.000
+  [P2] epoch 2  step 40/40  loss=0.2997  active=1.000
+Epoch 02  train_loss=0.2997  val_loss=0.3000  time=273.9s
+  [P2] epoch 3  step 10/40  loss=0.2997  active=1.000
+  [P2] epoch 3  step 20/40  loss=0.2995  active=1.000
+  [P2] epoch 3  step 30/40  loss=0.2995  active=1.000
+  [P2] epoch 3  step 40/40  loss=0.2994  active=1.000
+Epoch 03  train_loss=0.2994  val_loss=0.3000  time=272.8s
+  new best val_loss=0.3000  saved
+  [P2] epoch 4  step 10/40  loss=0.2989  active=1.000
+  [P2] epoch 4  step 20/40  loss=0.2989  active=1.000
+  [P2] epoch 4  step 30/40  loss=0.2989  active=1.000
+  [P2] epoch 4  step 40/40  loss=0.2986  active=1.000
+Epoch 04  train_loss=0.2986  val_loss=0.2997  time=820.5s
+  new best val_loss=0.2997  saved
+  [P2] epoch 5  step 10/40  loss=0.2970  active=1.000
+  [P2] epoch 5  step 20/40  loss=0.2966  active=1.000
+  [P2] epoch 5  step 30/40  loss=0.2952  active=1.000
+  [P2] epoch 5  step 40/40  loss=0.2931  active=1.000
+Epoch 05  train_loss=0.2931  val_loss=0.2995  time=276.0s
+  new best val_loss=0.2995  saved
+
+Training done. Best val_loss: 0.2994868755340576
+Model: D:\internship_RIED\ai-model\models\biometric\best_biometric_v3.keras
