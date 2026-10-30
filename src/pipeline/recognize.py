@@ -8,7 +8,7 @@ from src.pipeline.prepare_nose import prepare_nose
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "dataset" / "biometric" / "database"
-MODEL_BIOMETRIC = ROOT / "models" / "biometric" / "best_biometric.keras"
+MODEL_BIOMETRIC = ROOT / "models" / "biometric" / "inference_embedding_model.keras"
 
 IMG_SIZE = (224, 224)
 MATCH_THRESHOLD = 0.80
