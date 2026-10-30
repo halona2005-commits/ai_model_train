@@ -2,6 +2,7 @@ from pathlib import Path
 import numpy as np
 import cv2
 import tensorflow as tf
+from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet50 import preprocess_input
 
 from src.pipeline.prepare_nose import prepare_nose
@@ -15,13 +16,21 @@ MATCH_THRESHOLD = 0.80
 
 _biometric = None
 
+# Define the custom layer so Keras can load the model
+class L2Norm(layers.Layer):
+    def call(self, x):
+        return tf.math.l2_normalize(x, axis=1)
 
 def _get_model():
     global _biometric
     if _biometric is None:
-        _biometric = tf.keras.models.load_model(MODEL_BIOMETRIC, compile=False)
+        # Pass custom_objects to the loader
+        _biometric = tf.keras.models.load_model(
+            MODEL_BIOMETRIC, 
+            compile=False,
+            custom_objects={'L2Norm': L2Norm}
+        )
     return _biometric
-
 
 def _embed_crop(crop_bgr):
     img = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
@@ -30,7 +39,6 @@ def _embed_crop(crop_bgr):
     img = preprocess_input(img)
     vec = _get_model().predict(np.expand_dims(img, 0), verbose=0)[0]
     return vec.astype(np.float32)
-
 
 def recognize(image_path, top_k=5):
     prep = prepare_nose(image_path=image_path)
