@@ -11,7 +11,7 @@ from src.pipeline.recognize import _get_model, _embed_crop
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "dataset" / "biometric" / "database"
-MATCH_THRESHOLD = 0.80  # If similarity is above this, it's a duplicate
+MATCH_THRESHOLD = 0.2849  # If similarity is above this, it's a duplicate
 
 def register_dog(nose_image_path, dog_name, dog_id=None):
     """
