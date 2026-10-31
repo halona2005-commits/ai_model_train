@@ -3,60 +3,56 @@ import numpy as np
 import json
 import tensorflow as tf
 from tensorflow.keras.applications.resnet50 import preprocess_input
+import cv2
 
 from src.pipeline.prepare_nose import prepare_nose
+# We import the load model and embed function from recognize.py to keep it consistent
+from src.pipeline.recognize import _get_model, _embed_crop
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "dataset" / "biometric" / "database"
-MODEL_BIOMETRIC = ROOT / "models" / "biometric" / "best_biometric.keras"
-
-IMG_SIZE = (224, 224)
-_biometric = None
-
-
-def _get_model():
-    global _biometric
-    if _biometric is None:
-        _biometric = tf.keras.models.load_model(MODEL_BIOMETRIC, compile=False)
-    return _biometric
-
-
-def _embed_crop(crop_bgr):
-    import cv2
-    img = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, IMG_SIZE)
-    img = img.astype(np.float32)
-    img = preprocess_input(img)
-    vec = _get_model().predict(np.expand_dims(img, 0), verbose=0)[0]
-    return vec.astype(np.float32)
-
+MATCH_THRESHOLD = 0.80  # If similarity is above this, it's a duplicate
 
 def register_dog(nose_image_path, dog_name, dog_id=None):
     """
     Register a dog. Refuses if prepare_nose rejects the image.
-
-    Returns dict:
-        {"status": "registered", "dog_id": ..., ...}
-        or
-        {"status": "rejected", "reason_code": ..., "message": ...}
+    Refuses if the dog is already in the database (similarity > 0.80).
     """
+    # 1. Validate the nose
     prep = prepare_nose(image_path=nose_image_path)
     if prep["status"] != "accepted":
         return {
             "status": "rejected",
             "reason_code": prep["reason_code"],
-            "validator_score": prep["validator_score"],
             "message": f"Cannot register: {prep['reason_code']}",
         }
 
+    # 2. Generate Embedding
     vec = _embed_crop(prep["crop_bgr"])
 
+    # 3. Load Database
     emb = np.load(DB / "embeddings.npy")
     ids = np.load(DB / "dog_ids.npy")
     paths = np.load(DB / "paths.npy", allow_pickle=True)
     with open(DB / "metadata.json") as f:
         meta = json.load(f)
 
+    # 4. CHECK FOR DUPLICATES (The Fix)
+    if len(emb) > 0:
+        sims = emb @ vec
+        max_sim = float(np.max(sims))
+        
+        if max_sim >= MATCH_THRESHOLD:
+            best_match_idx = int(np.argmax(sims))
+            existing_dog_id = int(ids[best_match_idx])
+            return {
+                "status": "already_registered",
+                "dog_id": existing_dog_id,
+                "similarity": max_sim,
+                "message": f"This dog is already registered as Dog ID {existing_dog_id} (Similarity: {max_sim:.2f})"
+            }
+
+    # 5. Assign new ID and Save
     if dog_id is None:
         dog_id = max(meta["dog_ids"]) + 1 if meta["dog_ids"] else 0
     dog_id = int(dog_id)
@@ -81,7 +77,5 @@ def register_dog(nose_image_path, dog_name, dog_id=None):
         "status": "registered",
         "dog_id": dog_id,
         "dog_name": dog_name,
-        "validator_score": prep["validator_score"],
-        "total_vectors": len(new_emb),
-        "total_dogs": meta["total_dogs"],
+        "message": "Successfully registered new dog."
     }
