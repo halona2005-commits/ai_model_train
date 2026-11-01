@@ -6,19 +6,20 @@ from tensorflow.keras.applications.resnet50 import preprocess_input
 import cv2
 
 from src.pipeline.prepare_nose import prepare_nose
-# We import the load model and embed function from recognize.py to keep it consistent
 from src.pipeline.recognize import _get_model, _embed_crop
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "dataset" / "biometric" / "database"
-MATCH_THRESHOLD = 0.2849  # If similarity is above this, it's a duplicate
+
+# CHANGE: Updated to match the locked threshold from validation (FAR=1%)
+MATCH_THRESHOLD = 0.2849 
 
 def register_dog(nose_image_path, dog_name, dog_id=None):
     """
     Register a dog. Refuses if prepare_nose rejects the image.
-    Refuses if the dog is already in the database (similarity > 0.80).
+    Refuses if the dog is already in the database (similarity > threshold).
     """
-    # 1. Validate the nose
+    # 1. Validate the nose (now handles pre-cropped, lighting, rotation, blur)
     prep = prepare_nose(image_path=nose_image_path)
     if prep["status"] != "accepted":
         return {
@@ -37,7 +38,7 @@ def register_dog(nose_image_path, dog_name, dog_id=None):
     with open(DB / "metadata.json") as f:
         meta = json.load(f)
 
-    # 4. CHECK FOR DUPLICATES (The Fix)
+    # 4. CHECK FOR DUPLICATES
     if len(emb) > 0:
         sims = emb @ vec
         max_sim = float(np.max(sims))
