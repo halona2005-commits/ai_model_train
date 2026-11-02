@@ -11,7 +11,7 @@ MODEL_YOLO      = ROOT / "models" / "nose_detector" / "yolo11n_nose_tight" / "we
 
 IMG_SIZE = (224, 224)
 VALIDATOR_THRESHOLD  = 0.5
-BLUR_THRESHOLD = 15.0  # Minimum sharpness score
+BLUR_THRESHOLD = 5.0  # Lowered from 15.0 to accept slightly shaky images
 
 _validator = None
 _yolo      = None
@@ -39,13 +39,26 @@ def _is_blurry(img_bgr):
     variance = cv2.Laplacian(gray, cv2.CV_64F).var()
     return variance < BLUR_THRESHOLD, variance
 
-def _enhance_lighting(img_bgr):
-    lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB)
+def _enhance_image(img_bgr):
+    """Fixes low lighting and applies mild sharpening for shaky images."""
+    # 1. Gamma Correction (Brightens dark images)
+    gamma = 1.5
+    invGamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+    brightened = cv2.LUT(img_bgr, table)
+    
+    # 2. CLAHE (Local contrast enhancement)
+    lab = cv2.cvtColor(brightened, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     cl = clahe.apply(l)
-    limg = cv2.merge((cl, a, b))
-    return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    enhanced = cv2.cvtColor(cv2.merge((cl, a, b)), cv2.COLOR_LAB2BGR)
+    
+    # 3. Unsharp Mask (Slight sharpening for shaky images)
+    gaussian = cv2.GaussianBlur(enhanced, (0, 0), 3.0)
+    sharpened = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
+    
+    return sharpened
 
 def _rotate_image(image, angle):
     h, w = image.shape[:2]
@@ -80,53 +93,47 @@ def prepare_nose(image_path=None, img_bgr=None):
         if img_bgr is None:
             return {"status": "rejected", "reason_code": "IMAGE_UNREADABLE", "crop_bgr": None, "validator_score": 0.0}
 
-    # 1. Blur Check
-    is_blurry, sharpness = _is_blurry(img_bgr)
+    # 1. ENHANCE LIGHTING & SHARPNESS (Runs on every image)
+    enhanced_img = _enhance_image(img_bgr)
+
+    # 2. BLUR CHECK (Uses the lower threshold of 5.0)
+    is_blurry, sharpness = _is_blurry(enhanced_img)
     if is_blurry:
-        # Try to enhance lighting first to see if it helps
-        img_bgr = _enhance_lighting(img_bgr)
-        is_blurry, sharpness = _is_blurry(img_bgr)
-        if is_blurry:
-            return {"status": "rejected", "reason_code": "IMAGE_TOO_BLURRY", "crop_bgr": None, "validator_score": 0.0, "sharpness": sharpness}
+        return {"status": "rejected", "reason_code": "IMAGE_TOO_BLURRY", "crop_bgr": None, "validator_score": 0.0, "sharpness": sharpness}
 
-    # 2. Candidates: Always check the FULL image (fixes pre-cropped noses)
-    candidates = [("full", img_bgr)]
-    
-    yolo_crop = _yolo_crop(image_path, img_bgr)
+    # 3. CHECK IF ALREADY A CROPPED NOSE (Full Image First)
+    # If the user uploads a pre-cropped nose, YOLO might fail, so we check the full image first.
+    s_full = _validator_score(enhanced_img)
+    if s_full >= VALIDATOR_THRESHOLD:
+        return {"status": "accepted", "reason_code": "OK", "crop_bgr": enhanced_img, "validator_score": s_full, "used_yolo": False}
+
+    # 4. TRY YOLO CROP (Full Dog Image)
+    yolo_crop = _yolo_crop(image_path, enhanced_img)
     if yolo_crop is not None:
-        candidates.append(("yolo", yolo_crop))
+        s_crop = _validator_score(yolo_crop)
+        if s_crop >= VALIDATOR_THRESHOLD:
+            return {"status": "accepted", "reason_code": "OK", "crop_bgr": yolo_crop, "validator_score": s_crop, "used_yolo": True}
 
-    best_source = None
-    best_crop = None
-    best_score = -1.0
-    
-    for src, crop in candidates:
-        s = _validator_score(crop)
-        if s > best_score:
-            best_score = s
-            best_source = src
-            best_crop = crop
-            # If the full image is already a perfect nose, accept immediately
-            if best_score > 0.90:
-                return {"status": "accepted", "reason_code": "OK", "crop_bgr": best_crop, "validator_score": best_score, "used_yolo": (best_source == "yolo")}
+    # 5. ROTATION FALLBACK (Up to 90°)
+    # If the dog is heavily tilted, we rotate the image, find the nose, and un-rotate the crop.
+    angles = [-90, -75, -60, -45, -30, -15, 15, 30, 45, 60, 75, 90]
+    for angle in angles:
+        rotated_img = _rotate_image(enhanced_img, angle)
+        
+        # Check if the rotated FULL image is a nose (for pre-cropped tilted noses)
+        s_rot_full = _validator_score(rotated_img)
+        if s_rot_full >= VALIDATOR_THRESHOLD:
+            # Un-rotate it back to upright
+            upright_crop = _rotate_image(rotated_img, -angle)
+            return {"status": "accepted", "reason_code": "OK", "crop_bgr": upright_crop, "validator_score": s_rot_full, "used_yolo": False}
+            
+        # Check YOLO crop on the rotated image
+        rot_crop = _yolo_crop(None, rotated_img)
+        if rot_crop is not None:
+            upright_crop = _rotate_image(rot_crop, -angle)
+            s_rot_crop = _validator_score(upright_crop)
+            if s_rot_crop >= VALIDATOR_THRESHOLD:
+                return {"status": "accepted", "reason_code": "OK", "crop_bgr": upright_crop, "validator_score": s_rot_crop, "used_yolo": True}
 
-    # 3. Rotation Fallback
-    if best_score < VALIDATOR_THRESHOLD:
-        angles = [-30, -15, 15, 30]
-        for angle in angles:
-            rotated_img = _rotate_image(img_bgr, angle)
-            rotated_crop = _yolo_crop(None, rotated_img)
-            if rotated_crop is not None:
-                upright_crop = _rotate_image(rotated_crop, -angle)
-                s = _validator_score(upright_crop)
-                if s > best_score:
-                    best_score = s
-                    best_crop = upright_crop
-                    best_source = f"yolo_rot{angle}"
-                    if best_score >= VALIDATOR_THRESHOLD:
-                        break
-
-    if best_score < VALIDATOR_THRESHOLD:
-        return {"status": "rejected", "reason_code": "VALIDATOR_REJECTED", "crop_bgr": None, "validator_score": best_score}
-
-    return {"status": "accepted", "reason_code": "OK", "crop_bgr": best_crop, "validator_score": best_score, "used_yolo": (best_source == "yolo")}
+    # 6. FINAL REJECTION
+    return {"status": "rejected", "reason_code": "VALIDATOR_REJECTED", "crop_bgr": None, "validator_score": max(s_full, s_crop if yolo_crop is not None else 0)}
